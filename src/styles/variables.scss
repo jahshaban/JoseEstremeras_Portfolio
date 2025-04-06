@@ -1,0 +1,12 @@
+$base-blue: rgb(32, 65, 178);
+$base-lightblue: rgb(101, 151, 238);
+
+$base-black: #01002300;
+$base-white: #fdfdfdfd;
+
+// Mixins
+@mixin centered {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }

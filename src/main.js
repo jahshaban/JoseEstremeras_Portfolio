@@ -1,6 +1,6 @@
 import "./style.scss";
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { OrbitControls } from "./utils/OrbitControls.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import gsap from "gsap"
@@ -17,15 +17,44 @@ const modals = {
   contact: document.querySelector(".modal.contact"),
 };
 
+let touchHappened = false;
 document.querySelectorAll(".modal-exit-button").forEach((button) => {
-  button.addEventListener("click", (e) => {
+  button.addEventListener(
+    "touchend", 
+    (e) => {
+    touchHappened = true;
+    e.preventDefault();
     const modal = e.target.closest(".modal");
     hideModal(modal);
-  });
+  },
+  {passive: false}
+);
+
+  button.addEventListener(
+    "click", 
+    (e) => {
+      if (touchHappened) return;
+      e.preventDefault();
+    const modal = e.target.closest(".modal");
+    hideModal(modal);
+  },
+  {passive: false}
+);
 });
+
+let isModalOpen = false;
 
 const showModal = (modal) => {
   modal.style.display = "block";
+  isModalOpen = true;
+  controls.enabled = false;
+
+  if (currentHoveredObject) {
+    playHoverAnimation(currentHoveredObject, false);
+    currentHoveredObject = null;
+  }
+  document.body.style.cursor = "default";
+  currentIntersects = [];
   
   gsap.set(modal, {opacity: 0 });
 
@@ -36,6 +65,9 @@ const showModal = (modal) => {
 };
 
 const hideModal = (modal) => {
+  isModalOpen = false;
+  controls.enabled = true;
+
   gsap.to(modal, {
     opacity: 0,
     duration: 0.5,
@@ -48,6 +80,7 @@ const hideModal = (modal) => {
 
 const raycasterObjects = [];
 let currentIntersects = [];
+let currentHoveredObject = null;
 
 const socialLinks = {
   "github": "https://github.com/jahshaban",
@@ -225,10 +258,33 @@ Object.entries(textureMap).forEach(([key, paths]) => {
 });
 
 window.addEventListener("mousemove", (e)=>{
+  touchHappened = false
 	pointer.x = ( e.clientX / window.innerWidth ) * 2 - 1;
 	pointer.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
 });
-window.addEventListener("click", (e)=>{
+
+window.addEventListener(
+  "touchstart", 
+  (e)=>{
+    if(isModalOpen) return;
+    e.preventDefault()
+	  pointer.x = ( e.touches[0].clientX / window.innerWidth ) * 2 - 1;
+	  pointer.y = - ( e.touches[0].clientY / window.innerHeight ) * 2 + 1;
+ },
+ { passive: false }
+);
+
+window.addEventListener(
+  "touchend", 
+  (e)=>{
+    if(isModalOpen) return;
+    e.preventDefault()
+	  handleRaycasterInteraction()
+ },
+ { passive: false }
+);
+
+function handleRaycasterInteraction(){
   if (currentIntersects.length> 0) {
     const object = currentIntersects[0].object
 
@@ -252,17 +308,79 @@ window.addEventListener("click", (e)=>{
 
     }
   }
-});
+}
 
-loader.load("/models/MYROOM_PORTFOLIO_v5-v7-v2.glb", (glb) => {
+
+window.addEventListener("click", handleRaycasterInteraction);
+  
+
+let stick1,
+stick2,
+mywrk,
+abt,
+cntct,
+gthub,
+tch,
+ytbe,
+sndcld;
+
+loader.load("/models/MYROOM_PORTFOLIO_v6-v1-v1.glb", (glb) => {
 
   glb.scene.traverse(child=>{
     if(child.isMesh){
+
       Object.keys(textureMap).forEach(key=>{
         if(child.name.includes(key)){
           if(child.name.includes("raycaster")){
             raycasterObjects.push(child);
           }
+
+          if(child.name.includes("hover")){
+            child.userData.intialScale = new THREE.Vector3().copy(child.scale)
+            child.userData.intialPosition = new THREE.Vector3().copy(
+              child.position
+            );
+            child.userData.intialRotation = new THREE.Euler().copy(child.rotation);
+            //child.userData.isAnimating = false;
+          }
+
+          if (child.name.includes("stick_1")){
+            stick1 = child;
+            child.scale.set(0,1,0);
+          }
+          if (child.name.includes("stick_2")){
+            stick2 = child;
+            child.scale.set(0,0,0);
+          }
+          if (child.name.includes("mywork")){
+            mywrk = child;
+            child.scale.set(0,0,0);
+          }
+          if (child.name.includes("about")){
+            abt = child;
+            child.scale.set(0,0,0);
+          }
+          if (child.name.includes("contact")){
+            cntct = child;
+            child.scale.set(0,0,0);
+          }
+          if (child.name.includes("github")){
+            gthub = child;
+            child.scale.set(0,0,0);
+          }
+          if (child.name.includes("itch")){
+            tch = child;
+            child.scale.set(0,0,0);
+          }
+          if (child.name.includes("youtube")){
+            ytbe = child;
+            child.scale.set(0,0,0);
+          }
+          if (child.name.includes("soundcloud")){
+            sndcld = child;
+            child.scale.set(0,0,0);
+          }
+
           const material = new THREE.MeshBasicMaterial({
             map: loadedTextures.day[key],
           });
@@ -293,7 +411,74 @@ loader.load("/models/MYROOM_PORTFOLIO_v5-v7-v2.glb", (glb) => {
     }
   });
   scene.add(glb.scene);
+  playIntroAnimation()
 });
+
+function playIntroAnimation() {
+  const t1 = gsap.timeline({
+    defaults:{
+      duration: 0.8,
+      ease: "back.out(1.8)",
+    },
+  });
+
+ t1.to(stick1.scale, {
+    z: 1,
+    x: 1,
+  })
+  .to(stick2.scale,{
+    z: 1,
+    y: 1,
+    x: 1,
+ },"-=0.6")
+ .to(mywrk.scale,{
+  z: 1,
+  y: 1,
+  x: 1,
+},"-=0.6")
+.to(abt.scale,{
+  z: 1,
+  y: 1,
+  x: 1,
+},"-=0.6")
+.to(cntct.scale,{
+  z: 1,
+  y: 1,
+  x: 1,
+},"-=0.6")
+
+const t2 = gsap.timeline({
+  defaults:{
+    duration: 0.8,
+    ease: "back.out(1.8)",
+  },
+});
+
+t2.to(ytbe.scale, {
+  z: 1,
+  y: 1,
+  x: 1,
+})
+.to(sndcld.scale,{
+  z: 1,
+  y: 1,
+  x: 1,
+},"-=0.6")
+.to(gthub.scale,{
+z: 1,
+y: 1,
+x: 1,
+},"-=0.6")
+.to(tch.scale,{
+z: 1,
+y: 1,
+x: 1,
+},"-=0.6");
+
+}
+
+
+
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 
@@ -303,9 +488,13 @@ const camera = new THREE.PerspectiveCamera(
   1000 
 );
 camera.position.set(
-  9.102679414624376,
-  12.07289669989865,
-  9.149143254035927
+
+  12.165380668129075,
+ 
+  5.4066929001309845,
+  
+  10.620359020108442,
+  
 )
 
 const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
@@ -313,13 +502,25 @@ renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 const controls = new OrbitControls(camera, renderer.domElement);
+controls.minDistance = 10;
+controls.maxDistance = 25;
+controls.minPolarAngle = Math.PI / 2.3;
+controls.maxPolarAngle = Math.PI / 2;
+controls.minAzimuthAngle = 0;
+controls.maxAzimuthAngle = Math.PI / 2;
+
+
 controls.enableDamping = true; 
 controls.dampingFactor = 0.05;
+
 controls.update();
 controls.target.set(
--0.5205233755762245,
-1.3980113405921277,
--0.16051917792765572
+  
+  -0.5205233755762245,
+  
+  1.3980113405921277,
+   
+  -0.16051917792765572,
 )
 
 // Event Listeners
@@ -337,41 +538,90 @@ window.addEventListener("resize", () => {
 
 });
 
+function playHoverAnimation (object, isHovering) {
+  if (object.userData.isAnimating) return;
+
+ gsap.killTweensOf(object.scale);
+ gsap.killTweensOf(object.rotation);
+
+  if(isHovering) {
+    gsap.to(object.scale, {
+      x: object.userData.intialScale.x * 1.2,
+      y: object.userData.intialScale.y * 1.2,
+      z: object.userData.intialScale.z * 1.2,
+      duration: 0.5,
+      ease: "bounce.out(1.8)",
+    });
+    gsap.to(object.rotation, {
+      x: object.userData.intialRotation.x, //+ Math.PI / 32,
+      duration: 0.5,
+      ease: "bounce.out(1.8)",
+    });
+  }else{
+    gsap.to(object.scale, {
+      x: object.userData.intialScale.x,
+      y: object.userData.intialScale.y,
+      z: object.userData.intialScale.z,
+      duration: 0.3,
+      ease: "bounce.out(1.8)",
+    });
+    gsap.to(object.rotation, {
+      x: object.userData.intialRotation.x,
+      duration: 0.3,
+      ease: "bounce.out(1.8)",
+    });
+  }
+}
+
 const render = () => {
   controls.update();
 
- // console.log(camera.position);
- // console.log("0");
- // console.log(controls.target);
+  console.log(camera.position);
+  console.log("0");
+  console.log(controls.target);
  
   renderer.render( scene, camera );
 
   // Raycaster
+  if(!isModalOpen){
   raycaster.setFromCamera( pointer, camera );
 
 	// calculate objects intersecting the picking ray
 	currentIntersects = raycaster.intersectObjects(raycasterObjects);
 
-	//for ( let i = 0; i < currentIntersects.length; i ++ ) {
-		//currentIntersects[ i ].object.material.color.set( 0xff0000 );
-	//}
+	for ( let i = 0; i < currentIntersects.length; i ++ ) {}
 
   if(currentIntersects.length>0){
     const currentIntersectsObject = currentIntersects[0].object
 
+    if(currentIntersectsObject.name.includes("hover")){
+      if(currentIntersectsObject !== currentHoveredObject){
+
+        if(currentHoveredObject){
+          playHoverAnimation(currentHoveredObject, false);
+        }
+
+        playHoverAnimation(currentIntersectsObject, true);
+        currentHoveredObject = currentIntersectsObject;
+      }
+    }
+
     if(currentIntersectsObject.name.includes("pointer")){
 
-          document.body.style.cursor = "pointer";
-    }else{
-    document.body.style.cursor = "default";
+        document.body.style.cursor = "pointer";
+      } else {
+        document.body.style.cursor = "default";
+      }
+    } else {
+      if (currentHoveredObject) {
+        playHoverAnimation(currentHoveredObject,false);
+        currentHoveredObject = null;
+      }
+      document.body.style.cursor = "default";
     }
-    }else{
-    document.body.style.cursor = "default";
     
   }
-
-
-
+  renderer.render(scene, camera);
   window.requestAnimationFrame(render);
 };
 
