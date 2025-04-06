@@ -3,12 +3,61 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import gsap from "gsap"
 
 const canvas = document.querySelector("#experience-canvas");
 const sizes ={
   width: window.innerWidth,
   height: window.innerHeight
 };
+
+const modals = {
+  work: document.querySelector(".modal.work"),
+  about: document.querySelector(".modal.about"),
+  contact: document.querySelector(".modal.contact"),
+};
+
+document.querySelectorAll(".modal-exit-button").forEach((button) => {
+  button.addEventListener("click", (e) => {
+    const modal = e.target.closest(".modal");
+    hideModal(modal);
+  });
+});
+
+const showModal = (modal) => {
+  modal.style.display = "block";
+  
+  gsap.set(modal, {opacity: 0 });
+
+  gsap.to(modal, {
+    opacity: 1,
+    duration: 0.5,
+  });
+};
+
+const hideModal = (modal) => {
+  gsap.to(modal, {
+    opacity: 0,
+    duration: 0.5,
+    onComplete: ()=>{
+      modal.style.display = "none";
+
+    },
+  });
+};
+
+const raycasterObjects = [];
+let currentIntersects = [];
+
+const socialLinks = {
+  "github": "https://github.com/jahshaban",
+  "youtube": "https://www.youtube.com/@Jose_Estremera",
+  "itch": "https://jahshaban.itch.io/",
+  "soundcloud": "https://soundcloud.com/discover"
+}
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
 
 // Loaders
 const textureLoader = new THREE.TextureLoader();
@@ -33,7 +82,7 @@ const enviornmntMap = new THREE.CubeTextureLoader()
 
 const textureMap = {
   room_one: {
-    day: "/textures/room/day/TextureSetOne.webp",
+    day: "/textures/room/day/TextureSetOne_v5.webp",
   },
   piano_stand_2_two: {
     day: "/textures/room/day/TextureSetTwo.webp",
@@ -104,6 +153,64 @@ const textureMap = {
   cord_thirteen: {
     day: "/textures/room/day/TextureSetThirteen.webp",
   },
+  onepiece_poster: {
+    day: "/images/s-l1200.webp",
+  },
+  mariogalxy_poster: {
+    day: "/images/81D3LS7eGKL.webp",
+  },
+  Object_24: {
+    day: "/images/minecraft.webp",
+  },
+  fl_studio: {
+    day: "/images/flstudio.webp",
+  },
+  //====RAYCASTER (TARGET)======
+  about_eleven_raycaster: {
+    day: "/textures/room/day/TextureSetEleven.webp",
+  },
+  chair_top_eight_raycaster: {
+    day: "/textures/room/day/TextureSetEight.webp",
+  },
+  contact_eleven_raycaster: {
+    day: "/textures/room/day/TextureSetEleven.webp",
+  },
+  github_five_raycaster: {
+    day: "/textures/room/day/TextureSetFive.webp",
+  },
+  itch_five_raycaster: {
+    day: "/textures/room/day/TextureSetFive.webp",
+  },
+  mywork_eleven_raycaster: {
+    day: "/textures/room/day/TextureSetEleven.webp",
+  },
+  nametag_three_raycaster: {
+    day: "/textures/room/day/TextureSetThree.webp",
+  },
+  piano_2_four_raycaster: {
+    day: "/textures/room/day/TextureSetFour.webp",
+  },
+  piano_3_two_raycaster: {
+    day: "/textures/room/day/TextureSetTwo.webp",
+  },
+  piano_4_two_raycaster: {
+    day: "/textures/room/day/TextureSetTwo.webp",
+  },
+  piano_four_raycaster: {
+    day: "/textures/room/day/TextureSetFour.webp",
+  },
+  soundcloud_five_raycaster: {
+    day: "/textures/room/day/TextureSetFive.webp",
+  },
+  stick_1_eleven_raycaster: {
+    day: "/textures/room/day/TextureSetEleven.webp",
+  },
+  stick_2_eleven_raycaster: {
+    day: "/textures/room/day/TextureSetEleven.webp",
+  },
+  youtube_five_raycaster: {
+    day: "/textures/room/day/TextureSetFive.webp",
+  },
 };
 
 const loadedTextures = {
@@ -117,12 +224,45 @@ Object.entries(textureMap).forEach(([key, paths]) => {
   loadedTextures.day[key] = daytexture;
 });
 
-loader.load("/models/MYROOM_PORTFOLIO_v2.glb", (glb) => {
+window.addEventListener("mousemove", (e)=>{
+	pointer.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+	pointer.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
+});
+window.addEventListener("click", (e)=>{
+  if (currentIntersects.length> 0) {
+    const object = currentIntersects[0].object
+
+    Object.entries(socialLinks).forEach(([key, url]) => {
+  if(object.name.includes(key)){
+    const newWindow = window.open();
+    newWindow.opener = null;
+    newWindow.location = url;
+    newWindow.target = "_blank";
+    newWindow.rel = "noopener noreferrer"; 
+  }
+});
+
+    if(object.name.includes("mywork_eleven_raycaster_pointer")){
+      showModal(modals.work);
+    }else if (object.name.includes("about_eleven_raycaster_pointer")){
+      showModal(modals.about);
+
+    }else if (object.name.includes("contact_eleven_raycaster_pointer")){
+      showModal(modals.contact);
+
+    }
+  }
+});
+
+loader.load("/models/MYROOM_PORTFOLIO_v5-v7-v2.glb", (glb) => {
 
   glb.scene.traverse(child=>{
     if(child.isMesh){
       Object.keys(textureMap).forEach(key=>{
         if(child.name.includes(key)){
+          if(child.name.includes("raycaster")){
+            raycasterObjects.push(child);
+          }
           const material = new THREE.MeshBasicMaterial({
             map: loadedTextures.day[key],
           });
@@ -130,7 +270,7 @@ loader.load("/models/MYROOM_PORTFOLIO_v2.glb", (glb) => {
           child.material = material
 
           if (child.material.map) {
-            child.material.map.minFilter = THREE.inearFilter;
+            child.material.map.minFilter = THREE.LinearFilter;
           }
         }
 
@@ -200,11 +340,37 @@ window.addEventListener("resize", () => {
 const render = () => {
   controls.update();
 
-  console.log(camera.position);
-  console.log("0");
-  console.log(controls.target);
+ // console.log(camera.position);
+ // console.log("0");
+ // console.log(controls.target);
  
   renderer.render( scene, camera );
+
+  // Raycaster
+  raycaster.setFromCamera( pointer, camera );
+
+	// calculate objects intersecting the picking ray
+	currentIntersects = raycaster.intersectObjects(raycasterObjects);
+
+	//for ( let i = 0; i < currentIntersects.length; i ++ ) {
+		//currentIntersects[ i ].object.material.color.set( 0xff0000 );
+	//}
+
+  if(currentIntersects.length>0){
+    const currentIntersectsObject = currentIntersects[0].object
+
+    if(currentIntersectsObject.name.includes("pointer")){
+
+          document.body.style.cursor = "pointer";
+    }else{
+    document.body.style.cursor = "default";
+    }
+    }else{
+    document.body.style.cursor = "default";
+    
+  }
+
+
 
   window.requestAnimationFrame(render);
 };
